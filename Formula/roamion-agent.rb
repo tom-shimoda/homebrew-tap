@@ -21,7 +21,7 @@
 class RoamionAgent < Formula
   desc "Dial-out agent bridging Claude Agent SDK sessions to roamion central"
   homepage "https://roamion.tomolabo.jp"
-  version "0.1.6"
+  version "0.1.7"
   license "ISC"
 
   on_macos do
@@ -31,14 +31,14 @@ class RoamionAgent < Formula
     # 分かりにくいエラーになるので、arch 要件として明示して失敗させる。
     depends_on arch: :arm64
     url "https://github.com/tom-shimoda/roamion-agent/releases/download/v#{version}/roamion-agent-#{version}-darwin-arm64.tar.gz"
-    sha256 "44236ad69af6be7738d017783a8ad696f24f3ecb57cc4f04eec5908e5e94340c"
+    sha256 "3d1bd39829570461a939a4bcaa466c5e04c2c82dcdedf1b95054684a15417ebc"
   end
 
   on_linux do
     # linux-arm64 は将来対応（CI マトリクスに arm64 runner 追加後）。それまでは明示的に弾く。
     depends_on arch: :x86_64
     url "https://github.com/tom-shimoda/roamion-agent/releases/download/v#{version}/roamion-agent-#{version}-linux-x64.tar.gz"
-    sha256 "1b1f653c6169d8d042861aa7f5cbf251ce68b2c39064e196d212cba426ff4c39"
+    sha256 "4048ac29b7a66f8de21a61c1c10486b3d9aefa5dff05f5ce618a76e71f8bd952"
   end
 
   def install
@@ -84,9 +84,12 @@ class RoamionAgent < Formula
       2) 常駐登録（Linux=systemd user unit / macOS=LaunchAgent）:
            roamion-agent service install
 
-         URL とトークンを対話で聞かれます（トークンの入力は画面に表示されません）。
+         トークンを対話で聞かれます（入力は画面に表示されません）。接続先は
+         wss://roamion.tomolabo.jp が既定で、入力したトークンは【登録の前に central へ
+         問い合わせて有効性を確認】します（無効なら何も書き込まずに中止）。
          ワンライナーで済ませたい場合:
-           roamion-agent service install --url wss://roamion.tomolabo.jp --token <トークン>
+           roamion-agent service install --token <トークン>
+         別の central に繋ぐ場合のみ --url を渡します。
 
          【注意】--token はコマンドライン引数なので ps / /proc から同一ホストの他ユーザーに
          見えます。スクリプトから登録するなら環境変数を使ってください:
