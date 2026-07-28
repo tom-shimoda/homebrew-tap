@@ -21,7 +21,7 @@
 class RoamionAgent < Formula
   desc "Dial-out agent bridging Claude Agent SDK sessions to roamion central"
   homepage "https://roamion.tomolabo.jp"
-  version "0.1.4"
+  version "0.1.5"
   license "ISC"
 
   on_macos do
@@ -31,14 +31,14 @@ class RoamionAgent < Formula
     # 分かりにくいエラーになるので、arch 要件として明示して失敗させる。
     depends_on arch: :arm64
     url "https://github.com/tom-shimoda/roamion-agent/releases/download/v#{version}/roamion-agent-#{version}-darwin-arm64.tar.gz"
-    sha256 "d1b1d05bb36d21569e8c503520544e288abe8e8ade54aff926c8fa061d5c488e"
+    sha256 "a1a006628302b7b1f34da380aa0eeae6bc5b900b48e472708312c82afe92ab98"
   end
 
   on_linux do
     # linux-arm64 は将来対応（CI マトリクスに arm64 runner 追加後）。それまでは明示的に弾く。
     depends_on arch: :x86_64
     url "https://github.com/tom-shimoda/roamion-agent/releases/download/v#{version}/roamion-agent-#{version}-linux-x64.tar.gz"
-    sha256 "08da353f5bd5eb4730b7e17ed6f9001811430a7f6579154c097a1742d5c2fa85"
+    sha256 "630ab961fcffad43b70a57e44500a4224f86f9b4b374fde94e595fb811a3b1a0"
   end
 
   def install
@@ -82,12 +82,16 @@ class RoamionAgent < Formula
            平文トークンは【作成時に一度だけ】表示されます（後から再表示できません）。
 
       2) 常駐登録（Linux=systemd user unit / macOS=LaunchAgent）:
+           roamion-agent service install
+
+         URL とトークンを対話で聞かれます（トークンの入力は画面に表示されません）。
+         ワンライナーで済ませたい場合:
            roamion-agent service install --url wss://roamion.tomolabo.jp --token <トークン>
 
-         【推奨】--token はコマンドライン引数なので ps / /proc から同一ホストの他ユーザーに
-         見えます。共有ホストでは --token-stdin か環境変数 AGENT_TOKEN を使ってください:
-           printf '%s' "$AGENT_TOKEN" | \\
-             roamion-agent service install --url wss://roamion.tomolabo.jp --token-stdin
+         【注意】--token はコマンドライン引数なので ps / /proc から同一ホストの他ユーザーに
+         見えます。スクリプトから登録するなら環境変数を使ってください:
+           CENTRAL_URL=wss://roamion.tomolabo.jp AGENT_TOKEN=<トークン> \\
+             roamion-agent service install
 
          既に agent.env を用意済みなら:
            roamion-agent service install --env /path/to/agent.env
@@ -100,13 +104,23 @@ class RoamionAgent < Formula
            - 環境変数 ANTHROPIC_API_KEY（agent.env に追記可）
          常駐はログインユーザー権限で動くため、~/.claude がそのまま使えます。
 
-      4) 状態確認 / 解除:
+      4) 状態確認 / 起動・停止 / 解除:
            roamion-agent service status
+           roamion-agent service start | stop | restart
            roamion-agent service uninstall           # 常駐解除（agent.env は残す）
            roamion-agent service uninstall --purge   # agent.env も削除
 
          brew upgrade 後の再登録は不要です。常駐の起動パスにはバージョンに依存しない
-         #{opt_bin}/roamion-agent を使うため、upgrade しても壊れません。
+         #{opt_bin}/roamion-agent を使うため、upgrade しても壊れません。ただし upgrade は
+         ファイルを差し替えるだけで、動いているプロセスは古いバイナリのままです。
+         新しいバイナリに切り替えるには:
+           roamion-agent service restart
+
+      【v0.1.5 へ上げた方へ】常駐の起動コマンドが `roamion-agent`（引数なし）から
+      `roamion-agent daemon` に変わりました。v0.1.4 以前に登録した unit / plist は
+      引数なしのままなので、そのままでは常駐が起動できません（起動→即終了の繰り返しに
+      なります）。次を一度だけ実行して登録し直してください:
+           roamion-agent service install
 
       macOS で Gatekeeper に警告された場合（notarization は将来対応）:
         xattr -dr com.apple.quarantine #{opt_libexec}/roamion-agent
@@ -116,7 +130,10 @@ class RoamionAgent < Formula
 
   test do
     # CENTRAL_URL 無しでは起動時に fatal 終了する（②経路の健全性確認）。
-    assert_match(/CENTRAL_URL/i, shell_output("#{bin}/roamion-agent 2>&1", 1))
+    # v0.1.5 以降、daemon 起動は明示のサブコマンド（引数なしは --help への誘導で exit 2）。
+    assert_match(/CENTRAL_URL/i, shell_output("#{bin}/roamion-agent daemon 2>&1", 1))
+    # 引数なしは使い方を出して終わる（daemon を起動しない）。
+    assert_match "roamion-agent --help", shell_output("#{bin}/roamion-agent 2>&1", 2)
     # service サブコマンドは env 無しでも動く（CENTRAL_URL fatal より前に dispatch される）。
     # 注意: `service status` の exit code は常駐の有無で 0/1 が変わるため exit code に依存しない
     #       （既に常駐登録済みの環境で `brew test` が落ちないようにする）。
