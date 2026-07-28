@@ -21,7 +21,7 @@
 class RoamionAgent < Formula
   desc "Dial-out agent bridging Claude Agent SDK sessions to roamion central"
   homepage "https://roamion.tomolabo.jp"
-  version "0.1.5"
+  version "0.1.6"
   license "ISC"
 
   on_macos do
@@ -31,14 +31,14 @@ class RoamionAgent < Formula
     # 分かりにくいエラーになるので、arch 要件として明示して失敗させる。
     depends_on arch: :arm64
     url "https://github.com/tom-shimoda/roamion-agent/releases/download/v#{version}/roamion-agent-#{version}-darwin-arm64.tar.gz"
-    sha256 "a1a006628302b7b1f34da380aa0eeae6bc5b900b48e472708312c82afe92ab98"
+    sha256 "44236ad69af6be7738d017783a8ad696f24f3ecb57cc4f04eec5908e5e94340c"
   end
 
   on_linux do
     # linux-arm64 は将来対応（CI マトリクスに arm64 runner 追加後）。それまでは明示的に弾く。
     depends_on arch: :x86_64
     url "https://github.com/tom-shimoda/roamion-agent/releases/download/v#{version}/roamion-agent-#{version}-linux-x64.tar.gz"
-    sha256 "630ab961fcffad43b70a57e44500a4224f86f9b4b374fde94e595fb811a3b1a0"
+    sha256 "1b1f653c6169d8d042861aa7f5cbf251ce68b2c39064e196d212cba426ff4c39"
   end
 
   def install
@@ -116,7 +116,7 @@ class RoamionAgent < Formula
          新しいバイナリに切り替えるには:
            roamion-agent service restart
 
-      【v0.1.5 へ上げた方へ】常駐の起動コマンドが `roamion-agent`（引数なし）から
+      【v0.1.4 以前から上げた方へ】常駐の起動コマンドが `roamion-agent`（引数なし）から
       `roamion-agent daemon` に変わりました。v0.1.4 以前に登録した unit / plist は
       引数なしのままなので、そのままでは常駐が起動できません（起動→即終了の繰り返しに
       なります）。次を一度だけ実行して登録し直してください:
