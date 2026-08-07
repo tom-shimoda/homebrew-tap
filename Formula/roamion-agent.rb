@@ -21,7 +21,7 @@
 class RoamionAgent < Formula
   desc "Dial-out agent bridging Claude Agent SDK sessions to roamion central"
   homepage "https://roamion.tomolabo.jp"
-  version "0.1.22"
+  version "0.1.23"
   license "ISC"
 
   on_macos do
@@ -31,14 +31,14 @@ class RoamionAgent < Formula
     # 分かりにくいエラーになるので、arch 要件として明示して失敗させる。
     depends_on arch: :arm64
     url "https://github.com/tom-shimoda/roamion-agent/releases/download/v#{version}/roamion-agent-#{version}-darwin-arm64.tar.gz"
-    sha256 "e808be09c95a27564401a40364600bc778aebaa0f835513b16d7a25e90039984"
+    sha256 "11568ead1f7da5a41357c017c4c4417df7d0c3582943aa72ec1b4ae214159cbc"
   end
 
   on_linux do
     # linux-arm64 は将来対応（CI マトリクスに arm64 runner 追加後）。それまでは明示的に弾く。
     depends_on arch: :x86_64
     url "https://github.com/tom-shimoda/roamion-agent/releases/download/v#{version}/roamion-agent-#{version}-linux-x64.tar.gz"
-    sha256 "6f255ec38134ba67f266aef749bbcba3a056d08a3be3d8889d1b5e955ba24148"
+    sha256 "c800c16dc1a29504764eae3883ff664094323dcaecd4152ff7ef0bce58d7a037"
   end
 
   def install
@@ -66,11 +66,12 @@ class RoamionAgent < Formula
   end
 
   # 注意: brew services（service ブロック）は現状あえて用意していない。
-  #   roamion-agent は CENTRAL_URL/AGENT_TOKEN を process.env からのみ読み、agent.env を
-  #   自前で読むフォールバックが無い。brew services が生成する launchd には env が無いため
-  #   keep_alive 下で毎回 fatal→再起動ループになる。
-  #   → 常駐は roamion-agent 内蔵の `roamion-agent service install` を使う。
-  #     （agent.env を systemd の EnvironmentFile / launchd の source として明示注入する。）
+  #   かつての理由は「agent.env を自前で読むフォールバックが無く、brew services が生成する
+  #   launchd には env が無いので keep_alive 下で fatal→再起動ループになる」だった。
+  #   **Windows 対応（docs/WINDOWS.md §4.5）でフォールバックを実装したため、この前提は解消済み。**
+  #   ただし brew services 対応そのものは未検証なので、常駐は引き続き内蔵の
+  #   `roamion-agent service install` を案内する（agent.env を systemd の EnvironmentFile /
+  #   launchd の source として明示注入する経路）。
 
   def caveats
     <<~EOS
@@ -134,7 +135,20 @@ class RoamionAgent < Formula
   test do
     # CENTRAL_URL 無しでは起動時に fatal 終了する（②経路の健全性確認）。
     # v0.1.5 以降、daemon 起動は明示のサブコマンド（引数なしは --help への誘導で exit 2）。
-    assert_match(/CENTRAL_URL/i, shell_output("#{bin}/roamion-agent daemon 2>&1", 1))
+    #
+    # 【ROAMION_NO_ENV_FILE=1 が要る理由（省略すると brew test がハングし、本番 agent が切れる）】
+    #   agent は env が未設定のとき agent.env へフォールバックする（docs/WINDOWS.md §4.5）。
+    #   この検査は「env 無し起動 → CENTRAL_URL の fatal」を成立条件にしているので、
+    #   **agent.env を持つマシン（= `service install` 済みの利用者すべて）では fatal が出ず、
+    #   バイナリが常駐して shell_output が返らない**。さらに本番 agent.env を読んで本番 central へ
+    #   dial-out するため、CONTRACT §5 の「agent 二重接続は後勝ち」で稼働中の agent が切断される。
+    #   同じ理由で build.sh / release.yml のスモークにも同じスイッチを付けてある。
+    #   env -u も併せて要る: スイッチが止めるのは agent.env の読み込みだけで、
+    #   CENTRAL_URL / AGENT_TOKEN が **環境変数として既に入っている**ケースは止まらない
+    #   （常駐 agent 配下の shell から brew test を回すと env を継承している）。
+    assert_match(/CENTRAL_URL/i,
+                 shell_output("env -u CENTRAL_URL -u AGENT_TOKEN ROAMION_NO_ENV_FILE=1 " \
+                              "#{bin}/roamion-agent daemon 2>&1", 1))
     # 引数なしは使い方を出して終わる（daemon を起動しない）。
     assert_match "roamion-agent --help", shell_output("#{bin}/roamion-agent 2>&1", 2)
     # service サブコマンドは env 無しでも動く（CENTRAL_URL fatal より前に dispatch される）。
