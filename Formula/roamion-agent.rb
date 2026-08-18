@@ -21,7 +21,7 @@
 class RoamionAgent < Formula
   desc "Dial-out agent bridging Claude Agent SDK sessions to roamion central"
   homepage "https://roamion.tomolabo.jp"
-  version "0.1.33"
+  version "0.1.34"
   license "ISC"
 
   on_macos do
@@ -31,14 +31,14 @@ class RoamionAgent < Formula
     # 分かりにくいエラーになるので、arch 要件として明示して失敗させる。
     depends_on arch: :arm64
     url "https://github.com/tom-shimoda/roamion-agent/releases/download/v#{version}/roamion-agent-#{version}-darwin-arm64.tar.gz"
-    sha256 "045181039eb3f46a30c47e1168bd33a3b302844c1ac127305bd4d650fab5a2c0"
+    sha256 "673f5eabb6559b7fd8ca95f7e5da2451561b9cdfb0a25cb36e97a5944ac27066"
   end
 
   on_linux do
     # linux-arm64 は将来対応（CI マトリクスに arm64 runner 追加後）。それまでは明示的に弾く。
     depends_on arch: :x86_64
     url "https://github.com/tom-shimoda/roamion-agent/releases/download/v#{version}/roamion-agent-#{version}-linux-x64.tar.gz"
-    sha256 "5a04136d52c54bcec5a6facaf0add8966e17bbbc52679fc154880e6ccbc334cf"
+    sha256 "8d0a6e9a11283a86181d301c1dec4ab9da0f45fa426cd4a69439d42a10d16d02"
   end
 
   def install
